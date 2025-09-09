@@ -13,7 +13,9 @@ from app.database import get_engine
 from .config import get_settings
 
 class AskResponseFormater(BaseModel):
-    """Always use this tool to structure your response to the user."""
+    """Always use this tool to structure your response to the user. When the result would be multiple values, use the id_list field to return the list of row IDs. 
+    When the result is a single aggregation value, use the aggregation field to return the result. 
+    If there is no result to return, return an empty string in the answer field."""
     answer: str = Field(description="The answer to the user's question")
     followup_question: str = Field(description="A followup question the user could ask")
     id_list: Optional[List[str]] = Field(

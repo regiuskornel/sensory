@@ -4,7 +4,7 @@ API schemas using Pydantic models.
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, UUID4
 
 class MetricEnum(str, Enum):
     """Enumeration of supported sensor metric types."""
@@ -22,11 +22,12 @@ class SensorDataIn(BaseModel):
     sensor_id: str
     metric: MetricEnum
     value: float
-    timestamp: datetime # When the measurement was taken. It used insted of insertion time.
+    timestamp: Optional[datetime] # When the measurement was taken. It used insted of insertion time.
+    model_config = ConfigDict(from_attributes=True)
 
 class SensorDataOut(BaseModel):
     """Output schema for returning sensor data records."""
-    id: str
+    id: UUID4
     sensor_id: str
     metric: MetricEnum
     value: float

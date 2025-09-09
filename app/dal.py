@@ -8,12 +8,13 @@ from app import models, schemas
 
 def create_sensor_data(session: Session, data: schemas.SensorDataIn) -> models.SensorData:
     obj = models.SensorData(
-        id=f"{data.sensor_id}-{data.metric}-{data.timestamp.isoformat()}",
         sensor_id=data.sensor_id,
         metric=data.metric,
         value=data.value,
-        timestamp=data.timestamp,
     )
+    if data.timestamp:
+        setattr(obj, "timestamp", data.timestamp)
+    
     session.add(obj)
     session.commit()
     session.refresh(obj)

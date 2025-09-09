@@ -47,14 +47,153 @@ Note: There is no sensor_5 in the test data. So the result is OK.
 
 ```json
 {
-  "answer": "The following sensor records from the last week, excluding sensor_1, were found: sensor_4 (pressure, 1013.8), sensor_4 (humidity, 53.6), sensor_3 (humidity, 52.8), sensor_3 (pressure, 1013.1), sensor_2 (humidity, 55.2).",
-  "followup_question": "Would you like to see more details about a specific sensor?",
+  "answer": "Listed sensor rows apart from sensor_1 records from the last week.",
+  "followup_question": "Would you like to see more details about these sensors?",
   "id_list": [
-    "12757f4e-e4ea-4117-93a2-acc363049daa",
-    "3f1cab67-7e93-42f1-babf-a864cab66f30",
-    "ca082953-1742-4193-a03b-e2d5bc309db4",
-    "5013c904-1e0a-4ede-8d66-b9cd07f838b7",
-    "f6027d4c-cf87-4d0f-bd78-7e690f345450"
+    "e9a605c6-6546-425e-a7a3-67b3bc22871b",
+    "f324a384-d1f4-4b81-9bd4-8b720a51d79a",
+    "8e164c1e-3259-4705-a834-20993008efa1",
+    "af10f84b-4152-46ce-90e2-5bd192dfd74c",
+    "b79245a6-9ea7-4fa1-a2ba-459763c4b132"
+  ],
+  "aggregation": null
+}
+```
+
+API result:
+```json
+{
+  "llm_highlights": "Listed sensor rows apart from sensor_1 records from the last week.",
+  "sensors": [
+    {
+      "id": "b79245a6-9ea7-4fa1-a2ba-459763c4b132",
+      "sensor_id": "sensor_2",
+      "metric": "humidity",
+      "value": 55.2,
+      "timestamp": "2025-09-08T08:05:00"
+    },
+    {
+      "id": "af10f84b-4152-46ce-90e2-5bd192dfd74c",
+      "sensor_id": "sensor_3",
+      "metric": "pressure",
+      "value": 1013.1,
+      "timestamp": "2025-09-08T08:15:00"
+    },
+    {
+      "id": "8e164c1e-3259-4705-a834-20993008efa1",
+      "sensor_id": "sensor_3",
+      "metric": "humidity",
+      "value": 52.8,
+      "timestamp": "2025-09-08T08:25:00"
+    },
+    {
+      "id": "f324a384-d1f4-4b81-9bd4-8b720a51d79a",
+      "sensor_id": "sensor_4",
+      "metric": "humidity",
+      "value": 53.6,
+      "timestamp": "2025-09-08T08:45:00"
+    },
+    {
+      "id": "e9a605c6-6546-425e-a7a3-67b3bc22871b",
+      "sensor_id": "sensor_4",
+      "metric": "pressure",
+      "value": 1013.8,
+      "timestamp": "2025-09-08T08:55:00"
+    }
+  ],
+  "aggregation": null
+}
+```
+
+## 4
+"List the all sensors recorded from the future".
+
+```json
+{
+{"answer":"The sensors recorded in the future include: senso1.",
+"followup_question":"Would you like to know more details about these sensors?",
+"id_list":null,
+"aggregation":null}
+}
+```
+
+## 5
+List all humidity sensor values".
+
+```json
+{
+  "llm_highlights": "Retrieved humidity sensor values.",
+  "sensors": [
+    {
+      "id": "386d45ff-597d-4a36-b74a-7751041c1b8f",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 23.07,
+      "timestamp": "2025-09-08T08:49:00"
+    },
+    {
+      "id": "a16e2b78-f425-4ba3-937b-ed4e77fb8e50",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 22.79,
+      "timestamp": "2025-09-08T08:50:00"
+    },
+    {
+      "id": "513c121e-a63d-439f-9b46-4e2258e3fa0f",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 22.49,
+      "timestamp": "2025-09-08T08:51:00"
+    },
+    {
+      "id": "9973c4fe-3593-487c-a85d-4d72ed8286c5",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 22.19,
+      "timestamp": "2025-09-08T08:52:00"
+    },
+    {
+      "id": "03b761a5-dd71-4728-ae62-f74e389687a8",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 21.89,
+      "timestamp": "2025-09-08T08:53:00"
+    },
+    {
+      "id": "f3fdeee0-135d-4300-b7b5-e200854eb858",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 21.58,
+      "timestamp": "2025-09-08T08:54:00"
+    },
+    {
+      "id": "d25131a5-e70b-483c-aa0b-20a80c85a502",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 21.27,
+      "timestamp": "2025-09-08T08:55:00"
+    },
+    {
+      "id": "8e3b4332-c876-4797-a7d8-93db35b2930a",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 20.95,
+      "timestamp": "2025-09-08T08:56:00"
+    },
+    {
+      "id": "69ba8355-d81d-422f-8742-ec76b739cb4b",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 20.63,
+      "timestamp": "2025-09-08T08:57:00"
+    },
+    {
+      "id": "d3f7f46f-da51-4221-ab1a-820be9efc43d",
+      "sensor_id": "sensor_1",
+      "metric": "humidity",
+      "value": 20.32,
+      "timestamp": "2025-09-08T08:58:00"
+    }
   ],
   "aggregation": null
 }

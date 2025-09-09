@@ -46,7 +46,8 @@ def list_sensor_data(
     Returns:
         List: A list of sensor data records matching the provided filters.
     """
-    return dal.list_sensor_data(session, sensor_ids, metrics, date_from, date_to)
+    rows = dal.list_sensor_data(session, sensor_ids, metrics, date_from, date_to)
+    return list(schemas.SensorDataOut.model_validate(r) for r in rows)
 
 @router.post("/sensors/batch_get", response_model=List[schemas.SensorDataOut])
 def batch_get_sensor_data(
