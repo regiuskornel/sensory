@@ -1,0 +1,15 @@
+fastapi
+fastapi-cli
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic
+pytest
+numpy
+pandas
+requests
+langchain
+langchain-openai
+langchain-community
+python-dotenv
+asyncpg

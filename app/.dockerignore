@@ -1,0 +1,38 @@
+# Virtual environment
+.venv
+venv
+
+# Git
+.git
+.gitignore
+
+# Environment Variables
+*.env
+*.env.*
+
+# Docker
+docker-compose.yml
+.docker
+.dockerignore
+
+# Logs and databases 
+*.log
+*.sql
+*.sqlite
+*.db
+
+# OS generated files 
+.DS_Store
+.DS_Store?
+._*
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pyz
+*.pyw
+
+# IDEs and editors
+.vscode
