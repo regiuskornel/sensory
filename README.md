@@ -90,8 +90,9 @@ http://localhost:8000/docs
    b) enhance the prompt template get_prompt()
 * Should be tested with large amount of sensor data.
 * '/sensors/data' API endpoint is very naive at this phase. 
-  * Accepts arbitrary sensor data w/o checking if it a registered sensor or not. (requires sensor registration API). 
+  * Accepts arbitrary sensor data w/o checking if it a registered sensor or not. (requires sensor registration API).
+  * Returns the newly created record, but this is usually not required. Since sensor values typically transfered via large scale data pipelines or message queues.
   * Not protected from typical sensor overload. No throttle implemented. (After a power/network outage and restoration, typically all joined sensor start to send data in a short time period which maybe cause service overload.)
-  * Missing sensor device authentication.
+  * Missing sensor device authentication. (Typically token based auth)
 * Missing API user authz.
 * Missing load and automatic E2E testing.

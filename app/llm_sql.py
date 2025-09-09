@@ -36,14 +36,15 @@ def parse_response(output: str) -> AskResponseFormater:
 
 def get_prompt() -> Template:
     """
-    Create the prompt template for the SQL agent. Note the result will not conform with
-    Python standard string templating.
+    Create the prompt template for the SQL agent.
     Expected variable: 'userquestion'
     """
     # Define the prompt with format instructions
     format_instructions = parser.get_format_instructions()
     return Template(
-    'You are an expert Postgres Timescale SQL assistant.'
+    'You are an expert Postgres TimescaleDB SQL assistant. ' \
+    'Limits the result to 1000 rows. ' \
+    'Use the following format instructions to structure your response. ' \
     f'{format_instructions}'
     'Question: ${userquestion}')
 
