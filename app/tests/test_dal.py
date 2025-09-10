@@ -1,14 +1,12 @@
-"""Test module for Data Access Layer (DAL) functions."""
+"""Test module for Data Access Layer (DAL) class."""
 
 import uuid
 from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm.session import Session
-
 from app import models
-from app.dal import create_sensor_data, get_sensor_rows_by_ids, list_sensor_data
+from app.dal import SensorDataDAL
 
 # Setup in-memory SQLite for testing
 engine = create_engine("sqlite:///:memory:")
@@ -27,7 +25,13 @@ def db_session():
         models.Base.metadata.drop_all(bind=engine)
 
 
-def test_create_sensor_data(db_session: Session):
+@pytest.fixture(scope="function")
+def sensor_dal(db_session):
+    """Fixture to create a SensorDataDAL instance for testing"""
+    return SensorDataDAL(db_session)
+
+
+def test_create_sensor_data(sensor_dal: SensorDataDAL):
     """Row creation test"""
     now = datetime.now()
     data = models.SensorData(
@@ -38,7 +42,7 @@ def test_create_sensor_data(db_session: Session):
         timestamp=now,
     )
 
-    obj = create_sensor_data(db_session, data)
+    obj = sensor_dal.create_sensor_data(data)
 
     assert getattr(obj, "id") == data.id
     assert getattr(obj, "sensor_id") == "sensor1"
@@ -47,7 +51,7 @@ def test_create_sensor_data(db_session: Session):
     assert getattr(obj, "timestamp") == now
 
 
-def test_get_sensor_rows_by_ids(db_session: Session):
+def test_get_sensor_rows_by_ids(sensor_dal: SensorDataDAL):
     """Fetch rows by IDs test"""
     now = datetime.now()
     data1 = models.SensorData(
@@ -64,17 +68,17 @@ def test_get_sensor_rows_by_ids(db_session: Session):
         value=50,
         timestamp=now,
     )
-    obj1 = create_sensor_data(db_session, data1)
+    obj1 = sensor_dal.create_sensor_data(data1)
     id1 = str(obj1.id)
-    create_sensor_data(db_session, data2)
+    sensor_dal.create_sensor_data(data2)
 
-    results = get_sensor_rows_by_ids(db_session, [id1])
+    results = sensor_dal.get_sensor_rows_by_ids([id1])
 
     assert len(results) == 1
     assert getattr(results[0], "sensor_id") == "sensor1"
 
 
-def test_list_sensor_data(db_session: Session):
+def test_list_sensor_data(sensor_dal: SensorDataDAL):
     """List and filter rows test"""
     now = datetime.now()
     data1 = models.SensorData(
@@ -98,21 +102,21 @@ def test_list_sensor_data(db_session: Session):
         value=22,
         timestamp=now,
     )
-    create_sensor_data(db_session, data1)
-    create_sensor_data(db_session, data2)
-    create_sensor_data(db_session, data3)
+    sensor_dal.create_sensor_data(data1)
+    sensor_dal.create_sensor_data(data2)
+    sensor_dal.create_sensor_data(data3)
 
     # Test filter by sensor_id
-    results = list_sensor_data(db_session, sensor_ids=[str(data1.id)])
+    results = sensor_dal.list_sensor_data(sensor_ids=["sensor1"])
     assert all(getattr(r, "sensor_id") == "sensor1" for r in results)
 
-    # Test filter by metric
-    results = list_sensor_data(db_session, metrics=[models.MetricEnum.TEMPERATURE])
+    # Test filter by metric (convert enum to string)
+    results = sensor_dal.list_sensor_data(metrics=["temperature"])
     assert len(results) == 2
     assert all(getattr(r, "metric") == models.MetricEnum.TEMPERATURE for r in results)
 
-    # Test filter by date range
-    results = list_sensor_data(
-        db_session, date_from=now - timedelta(days=1), date_to=now + timedelta(days=1)
-    )
+    # Test filter by date range (convert datetime to ISO string)
+    date_from_str = (now - timedelta(days=1)).isoformat()
+    date_to_str = (now + timedelta(days=1)).isoformat()
+    results = sensor_dal.list_sensor_data(date_from=date_from_str, date_to=date_to_str)
     assert len(results) == 2

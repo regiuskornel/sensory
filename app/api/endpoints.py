@@ -2,9 +2,8 @@
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from app import dal, schemas, models
-from app.database import get_db_session
+from app import schemas, models
+from app.dal import SensorDataDAL, get_sensor_data_dal
 from app.llm_sql import load_sql_agent, get_prompt, parse_response
 
 router = APIRouter()
@@ -16,14 +15,15 @@ def get_llm_agent():
 
 @router.post("/sensors/data", response_model=schemas.SensorDataOut)
 def create_sensor_data(
-    data: schemas.SensorDataIn, session: Session = Depends(get_db_session)
+    data: schemas.SensorDataIn, 
+    dal: SensorDataDAL = Depends(get_sensor_data_dal)
 ):
     """
     Creates a new sensor data record in the database.
 
     Args:
         data (schemas.SensorDataIn): The input data for the sensor, validated by the SensorDataIn schema.
-        session (Session, optional): The database session dependency.
+        dal (SensorDataDAL): The data access layer dependency.
 
     Returns:
         The created sensor data record.
@@ -48,7 +48,7 @@ def create_sensor_data(
         value=data.value,
         timestamp=data.timestamp
     )
-    return dal.create_sensor_data(session, sensor_data)
+    return dal.create_sensor_data(sensor_data)
 
 
 @router.get("/sensors/list", response_model=List[schemas.SensorDataOut])
@@ -57,7 +57,7 @@ def list_sensor_data(
     metrics: Optional[List[schemas.MetricEnum]] = Query(default=None, alias="metric"),
     date_from: Optional[str] = Query(default=None),
     date_to: Optional[str] = Query(default=None),
-    session: Session = Depends(get_db_session),
+    dal: SensorDataDAL = Depends(get_sensor_data_dal),
 ):
     """
     Retrieve sensor data filtered by sensor IDs, metrics, and date range.
@@ -67,41 +67,55 @@ def list_sensor_data(
         metrics (Optional[List[schemas.MetricEnum]]): List of metric types to filter the data. Query parameter alias: "metric".
         date_from (Optional[str]): Start date (inclusive) for filtering data in ISO format.
         date_to (Optional[str]): End date (inclusive) for filtering data in ISO format.
-        session (Session): Database session dependency.
+        dal (SensorDataDAL): The data access layer dependency.
 
     Returns:
         List: A list of sensor data records matching the provided filters.
     """
-    rows = dal.list_sensor_data(session, sensor_ids, metrics, date_from, date_to)
+    # Convert metrics enum to string values if provided
+    metric_strings = [metric.value for metric in metrics] if metrics else None
+    
+    rows = dal.list_sensor_data(sensor_ids, metric_strings, date_from, date_to)
     return list(schemas.SensorDataOut.model_validate(r) for r in rows)
 
 
 @router.post("/sensors/batch_get", response_model=List[schemas.SensorDataOut])
 def batch_get_sensor_data(
-    request: schemas.BatchGetRequest, session: Session = Depends(get_db_session)
+    request: schemas.BatchGetRequest, 
+    dal: SensorDataDAL = Depends(get_sensor_data_dal)
 ):
     """
     Retrieve sensor data for a batch of sensor IDs (strings).
 
     Args:
         request (schemas.BatchGetRequest): The request object containing a list of sensor IDs.
-        session (Session, optional): The database session dependency.
+        dal (SensorDataDAL): The data access layer dependency.
 
     Raises:
-        HTTPException: If the sensor_ids list in the request is empty.
+        HTTPException: If the sensor_ids list in the request is empty or contains invalid values.
 
     Returns:
-        List[schemas.SensorData]: A list of sensor data objects corresponding to the provided sensor IDs.
+        List[schemas.SensorDataOut]: A list of sensor data objects corresponding to the provided sensor IDs.
     """
+    # Input validation
     if not request.sensor_ids:
         raise HTTPException(status_code=400, detail="sensor_ids list must not be empty")
-    return dal.get_sensor_rows_by_ids(session, request.sensor_ids)
+    
+    if len(request.sensor_ids) > 1000:  # Reasonable limit to prevent abuse
+        raise HTTPException(status_code=400, detail="sensor_ids list cannot exceed 1000 items")
+    
+    # Validate each sensor_id
+    for sensor_id in request.sensor_ids:
+        if not sensor_id or not sensor_id.strip():
+            raise HTTPException(status_code=400, detail="All sensor_ids must be non-empty strings")
+    
+    return dal.get_sensor_rows_by_ids(request.sensor_ids)
 
 
 @router.get("/sensors/ask", response_model=schemas.AskResponse)
 def ask_sensor_data(
     q: str, 
-    session: Session = Depends(get_db_session),
+    dal: SensorDataDAL = Depends(get_sensor_data_dal),
     llm_agent = Depends(get_llm_agent)
 ):
     """
@@ -114,7 +128,7 @@ def ask_sensor_data(
 
     Args:
         q (str): The user's natural language question about sensor data.
-        session (Session): Database session dependency.
+        dal (SensorDataDAL): The data access layer dependency.
         llm_agent: The LLM SQL agent dependency.
 
     Returns:
@@ -152,7 +166,7 @@ def ask_sensor_data(
         if (
             parsed.id_list
         ):  # LLM returned a list of row IDs, so the reponsone more likely a select result w/o aggregation.
-            rows = dal.get_sensor_rows_by_ids(session, parsed.id_list)
+            rows = dal.get_sensor_rows_by_ids(parsed.id_list)
             # Convert DB result to Pydantic models using attibute mapping.
             response.sensors = list(
                 schemas.SensorDataOut.model_validate(r) for r in rows

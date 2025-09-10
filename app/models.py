@@ -4,8 +4,7 @@ Database models for sensor data.
 
 from datetime import datetime
 from enum import Enum
-
-from sqlalchemy import Column, Enum as SAEnum,  text, DateTime, String, Float
+from sqlalchemy import Column, Enum as SAEnum, DateTime, String, Float
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
