@@ -44,7 +44,7 @@ class SensorData(Base):
     sensor_id = Column(
         String, index=True
     )  # Sensor unique ID, sensor name or serial number.
-    metric = Column(SAEnum(MetricEnum), index=True)  # Type of metric being recorded.
+    metric = Column(SAEnum(MetricEnum, values_callable=lambda obj: [e.value for e in obj]), index=True)  # Type of metric being recorded.
     value = Column(
         Float
     )  # The recorded value. The interpretation depends on the metric type.

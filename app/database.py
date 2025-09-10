@@ -44,8 +44,10 @@ async def init_postgres() -> None:
     init_sql = """
     CREATE EXTENSION IF NOT EXISTS timescaledb;
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+ 
     SELECT create_hypertable('sensor_data', 'timestamp', if_not_exists => TRUE);
 
+    -- Clean up any existing data for a fresh start
     TRUNCATE TABLE sensor_data;
 
     -- Set default UUID for ID field if not already set. SQL Alchemy standard solution

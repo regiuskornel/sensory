@@ -12,6 +12,10 @@ from pydantic import SecretStr, BaseModel, Field
 from app.database import get_engine
 from .config import get_settings
 
+def get_llm_agent():
+    """Get the LLM SQL agent instance for DI."""
+    return load_sql_agent()
+
 class AskResponseFormater(BaseModel):
     """Always use this tool to structure your response to the user. When the result would be multiple values, use the id_list field to return the list of row IDs. 
     When the result is a single aggregation value, use the aggregation field to return the result. 
@@ -57,9 +61,7 @@ def load_sql_database() -> SQLDatabase:
 
 
 def load_llm() -> ChatOpenAI:
-    """ 
-    Load the OpenAI model using the key and model_id specified in config.
-    """
+    """ Load the OpenAI model using the key and model_id specified in config."""
 
     openai_api_key : SecretStr = SecretStr(get_settings().openai_api_key)
     if openai_api_key.get_secret_value() == "Invalid":
@@ -78,11 +80,8 @@ def load_sql_agent() -> AgentExecutor:
     db = load_sql_database()
     toolkit = SQLDatabaseToolkit(db=db, llm=llm)
     # set extra tool functions the agent can use
-    # extra_tools = [[AskResponseFormater]]
-    #    [output_plot, output_time_series_plot, output_table]
+    #    [output_plot, output_table]
     extra_tools = []
-    # model_with_tools = model.bind_tools([AskResponseFormater], llm=load_llm())
-    # create SQL agent
     return create_sql_agent(
         llm=llm,
         toolkit=toolkit,

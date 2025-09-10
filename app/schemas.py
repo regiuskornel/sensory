@@ -17,7 +17,7 @@ class MetricEnum(str, Enum):
     LEVEL = "level"  # Sensor measures level. E.g. water level.
     FREQUENCY = "frequency"  # Sensor measures frequency (ticks per second).
     TICKS = "ticks"  # Sensor measures number of ticks, pulses, events.
-
+    BINARY = "binary"  #: Sensor measures binary state, e.g. open/closed, on/off represented as 1.0/0.0.
 
 class SensorDataIn(BaseModel):
     """Input schema for creating a new sensor data record."""
@@ -38,6 +38,22 @@ class SensorDataOut(BaseModel):
     value: float = Field(title="Measured value")
     timestamp: datetime = Field(title="Timestamp of the measurement")
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_model(cls, sensor_data) -> "SensorDataOut":
+        """ Convert a models.SensorData object to SensorDataOut schema instance """
+        return cls.model_validate({
+            "id": str(sensor_data.id),
+            "sensor_id": sensor_data.sensor_id,
+            "metric": sensor_data.metric,
+            "value": sensor_data.value,
+            "timestamp": sensor_data.timestamp
+        })
+
+    @classmethod
+    def from_models(cls, sensor_data_list) -> List["SensorDataOut"]:
+        """ Convert a list of models.SensorData objects to a list of SensorDataOut schema instances """
+        return [cls.from_model(sensor_data) for sensor_data in sensor_data_list]
 
 
 class BatchGetRequest(BaseModel):

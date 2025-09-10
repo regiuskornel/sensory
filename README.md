@@ -16,6 +16,7 @@ Main frameworks:
 * LangChain NLP to SQL tooling
 
 Application leverages Postgres Timescale DB extension for effective query over large time series dataset.
+LLM asked to return row IDs, then the application DAL layer retrieves the responsed full row values using that ID list. This 2 phased approach ensures to retrieve rows that the actual user has acces and/or can be part of complex join result enhancement. Row level authz not be used in this MVP application.
 
 Code structure:
 
@@ -82,6 +83,10 @@ pip install -r requirements.txt
 fastapi dev app/main.py
 ```
 
+```bash
+python -m coverage run -m pytest app/tests/
+```
+
 ### API documentation and manual testing
 
 http://localhost:8000/docs
@@ -90,10 +95,9 @@ http://localhost:8000/docs
 ## Known limitations and potential improvements.
 
 * LLM latency is high (>20 seconds). Requires to LangChain fine tuning and prompt research. (Cache table structure, etc)
-* LLM asked to return row IDs, then the application DAL layer retrieves the responsed full row values using ID list. This 2 phased approach ensures to retrieve rows that the actual user has acces and/or can be part of complex join (result enhancement). This not be used in this MVP application.
 * Need to investigate which is more effective? 
-   a) fine tune model class AskResponseFormater annotations and/or 
-   b) enhance the prompt template get_prompt()
+   1. fine tune model class AskResponseFormater annotations and/or 
+   2. enhance the prompt template get_prompt()
 * Should be tested with large amount of sensor data.
 * '/sensors/data' API endpoint is very naive at this phase. 
   * Accepts arbitrary sensor data w/o checking if it a registered sensor or not. (needs a sensor registration API).

@@ -26,7 +26,7 @@ Latency: 32.23s
 ## 3 
 "What was the highest temperature recorded for sensor_1 in the last week?"
 
-Failed:
+Failed to map aggregation result to 'aggregation' field.
 
 [(26.28,)]{"answer":"The highest temperature recorded for sensor_1 in the last week was 26.28 degrees.","followup_question":"What was the average temperature recorded for sensor_1 in the last week?",** "id_list":null,"aggregation":null}**
 

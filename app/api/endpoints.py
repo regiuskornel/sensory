@@ -4,19 +4,14 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app import schemas, models
 from app.dal import SensorDataDAL, get_sensor_data_dal
-from app.llm_sql import load_sql_agent, get_prompt, parse_response
+from app.llm_sql import get_prompt, parse_response, get_llm_agent
 
 router = APIRouter()
-
-def get_llm_agent():
-    """Get the LLM SQL agent instance."""
-    return load_sql_agent()
 
 
 @router.post("/sensors/data", response_model=schemas.SensorDataOut)
 def create_sensor_data(
-    data: schemas.SensorDataIn, 
-    dal: SensorDataDAL = Depends(get_sensor_data_dal)
+    data: schemas.SensorDataIn, dal: SensorDataDAL = Depends(get_sensor_data_dal)
 ):
     """
     Creates a new sensor data record in the database.
@@ -29,26 +24,13 @@ def create_sensor_data(
         The created sensor data record.
     """
 
-    # Input validation
-    if not data.sensor_id or not data.sensor_id.strip():
-        raise HTTPException(status_code=400, detail="sensor_id is required and cannot be empty")
-    
-    if data.value is None:
-        raise HTTPException(status_code=400, detail="value is required")
-    
-    if not isinstance(data.value, (int, float)):
-        raise HTTPException(status_code=400, detail="value must be a number")
-    
-    if data.metric not in schemas.MetricEnum:
-        raise HTTPException(status_code=400, detail=f"metric must be one of: {list(schemas.MetricEnum)}")
-    
     sensor_data = models.SensorData(
         sensor_id=data.sensor_id,
         metric=data.metric,
         value=data.value,
-        timestamp=data.timestamp
+        timestamp=data.timestamp,
     )
-    return dal.create_sensor_data(sensor_data)
+    return schemas.SensorDataOut.from_model(dal.create_sensor_data(sensor_data))
 
 
 @router.get("/sensors/list", response_model=List[schemas.SensorDataOut])
@@ -74,15 +56,14 @@ def list_sensor_data(
     """
     # Convert metrics enum to string values if provided
     metric_strings = [metric.value for metric in metrics] if metrics else None
-    
+
     rows = dal.list_sensor_data(sensor_ids, metric_strings, date_from, date_to)
-    return list(schemas.SensorDataOut.model_validate(r) for r in rows)
+    return schemas.SensorDataOut.from_models(rows)
 
 
 @router.post("/sensors/batch_get", response_model=List[schemas.SensorDataOut])
 def batch_get_sensor_data(
-    request: schemas.BatchGetRequest, 
-    dal: SensorDataDAL = Depends(get_sensor_data_dal)
+    request: schemas.BatchGetRequest, dal: SensorDataDAL = Depends(get_sensor_data_dal)
 ):
     """
     Retrieve sensor data for a batch of sensor IDs (strings).
@@ -100,31 +81,35 @@ def batch_get_sensor_data(
     # Input validation
     if not request.sensor_ids:
         raise HTTPException(status_code=400, detail="sensor_ids list must not be empty")
-    
-    if len(request.sensor_ids) > 1000:  # Reasonable limit to prevent abuse
-        raise HTTPException(status_code=400, detail="sensor_ids list cannot exceed 1000 items")
-    
+
+    # Pagination not implemented so smtg protection needed.
+    if len(request.sensor_ids) > 1000:  # Reasonable limit to prevent server overload
+        raise HTTPException(
+            status_code=400, detail="sensor_ids list cannot exceed 1000 items"
+        )
+
     # Validate each sensor_id
     for sensor_id in request.sensor_ids:
         if not sensor_id or not sensor_id.strip():
-            raise HTTPException(status_code=400, detail="All sensor_ids must be non-empty strings")
-    
-    return dal.get_sensor_rows_by_ids(request.sensor_ids)
+            raise HTTPException(
+                status_code=400, detail="All sensor_ids must be non-empty strings"
+            )
+
+    rows = dal.get_sensor_rows_by_ids(request.sensor_ids)
+    return schemas.SensorDataOut.from_models(rows)
 
 
 @router.get("/sensors/ask", response_model=schemas.AskResponse)
 def ask_sensor_data(
-    q: str, 
+    q: str,
     dal: SensorDataDAL = Depends(get_sensor_data_dal),
-    llm_agent = Depends(get_llm_agent)
+    llm_agent=Depends(get_llm_agent),
 ):
     """
     Handles natural language queries about sensor data using an LangChain.
 
-    This endpoint receives a user question, generates a prompt for the LLM, 
+    This endpoint receives a user question, generates a prompt for the LLM,
     processes the LLM's response, and returns structured sensor data or aggregation results.
-    It supports both direct data retrieval and aggregation queries, 
-    mapping LLM output to API response schemas.
 
     Args:
         q (str): The user's natural language question about sensor data.
@@ -132,18 +117,23 @@ def ask_sensor_data(
         llm_agent: The LLM SQL agent dependency.
 
     Returns:
-        schemas.AskResponse: Structured response containing highlights, sensor data, or aggregation results.
+        schemas.AskResponse: Structured response containing highlights, sensor list, or aggregation results.
 
     Raises:
         HTTPException: For LLM invocation errors, response parsing errors, or schema conversion errors.
     """
-    # Input validation
+    # Input validation, since no input model is used here.
     if not q or not q.strip():
-        raise HTTPException(status_code=400, detail="Query parameter 'q' is required and cannot be empty")
-    
+        raise HTTPException(
+            status_code=400,
+            detail="Query parameter 'q' is required and cannot be empty",
+        )
+
     if len(q.strip()) > 1000:  # Reasonable limit for query length
-        raise HTTPException(status_code=400, detail="Query length cannot exceed 1000 characters")
-    
+        raise HTTPException(
+            status_code=400, detail="Query length cannot exceed 1000 characters"
+        )
+
     try:
         prompt_with_format = get_prompt().substitute(userquestion=q)
         answer = llm_agent.invoke({"input": prompt_with_format})["output"]
@@ -161,16 +151,14 @@ def ask_sensor_data(
 
     try:
         response = schemas.AskResponse(
-            llm_highlights=parsed.answer, 
-            followup_question=parsed.followup_question)
+            llm_highlights=parsed.answer, followup_question=parsed.followup_question
+        )
         if (
             parsed.id_list
         ):  # LLM returned a list of row IDs, so the reponsone more likely a select result w/o aggregation.
             rows = dal.get_sensor_rows_by_ids(parsed.id_list)
-            # Convert DB result to Pydantic models using attibute mapping.
-            response.sensors = list(
-                schemas.SensorDataOut.model_validate(r) for r in rows
-            )
+            # Convert DB result to Pydantic models using from_models method.
+            response.sensors = schemas.SensorDataOut.from_models(rows)
         elif (
             parsed.aggregation
         ):  # LLM returned an aggregation result, so user intention more likely an aggregation query.

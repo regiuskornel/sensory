@@ -110,11 +110,10 @@ API result:
 
 ```json
 {
-{"answer":"The sensors recorded in the future include: senso1.",
-"followup_question":"Would you like to know more details about these sensors?",
-"id_list":null,
-"aggregation":null}
+"answer":"There are no sensors recorded from the future.",
+"followup_question":"Would you like to see sensors recorded in the past?"
 }
+
 ```
 
 ## 5

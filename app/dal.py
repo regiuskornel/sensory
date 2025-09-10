@@ -20,7 +20,7 @@ class SensorDataDAL:
         """
         self.session = session
 
-    def create_sensor_data(self, data: models.SensorData) -> models.SensorData:
+    def create_sensor_data(self, data: models.SensorData):
         """
         Creates a new SensorData record in the database.
         
@@ -31,9 +31,9 @@ class SensorDataDAL:
             models.SensorData: The newly created SensorData object. (MVP only, won't need in production)
         """
         self.session.add(data)
+        self.session.flush()  # Flush to get server-generated values before commit
         self.session.commit()
         # Only for MVP. Should not return the object in production. See Command and query responsibility segregation (CQRS).
-        self.session.refresh(data)
         return data
 
     def get_sensor_rows_by_ids(self, row_ids: List[str]) -> List[models.SensorData]:
