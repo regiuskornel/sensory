@@ -17,6 +17,7 @@ Main frameworks:
 
 Application leverages Postgres Timescale DB extension for effective query over large time series dataset.
 LLM asked to return row IDs, then the application DAL layer retrieves the responsed full row values using that ID list. This 2 phased approach ensures to retrieve rows that the actual user has acces and/or can be part of complex join result enhancement. Row level authz not be used in this MVP application.
+API request validations are defined in request objects in declarative way.
 
 Code structure:
 
