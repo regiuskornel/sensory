@@ -68,6 +68,12 @@ docker exec -it timescaledb psql -U postgres
 
 Copy  .env.template to .env file and fill out the environment variables (requires Open AI API key)
 
+Activate virtual environment (if any)
+```bash
+# Create: python -m venv sensory
+source sensory/.venv/bin/activate
+```
+
 ### Run the app
 
 ```bash
@@ -90,9 +96,11 @@ http://localhost:8000/docs
    b) enhance the prompt template get_prompt()
 * Should be tested with large amount of sensor data.
 * '/sensors/data' API endpoint is very naive at this phase. 
-  * Accepts arbitrary sensor data w/o checking if it a registered sensor or not. (requires sensor registration API).
-  * Returns the newly created record, but this is usually not required. Since sensor values typically transfered via large scale data pipelines or message queues.
+  * Accepts arbitrary sensor data w/o checking if it a registered sensor or not. (needs a sensor registration API).
+  * It returns the newly created record, but this is usually not required. Since sensor values typically transfered via large scale data pipelines or message queues. Only for MVP manual testing.
   * Not protected from typical sensor overload. No throttle implemented. (After a power/network outage and restoration, typically all joined sensor start to send data in a short time period which maybe cause service overload.)
   * Missing sensor device authentication. (Typically token based auth)
+* Database structure for real lile use cases should store the latest sensor data in a dedicated table or a cache.
 * Missing API user authz.
-* Missing load and automatic E2E testing.
+* Missing load and E2E testing.
+* No error and warning logging.

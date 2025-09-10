@@ -1,9 +1,13 @@
-import pytest
+"""Test module for Data Access Layer (DAL) functions."""
+
+import uuid
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, Column, String, Float, DateTime, Enum as SAEnum, select
+import pytest
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
-from app import models, schemas
+
+from app import models
 from app.dal import create_sensor_data, get_sensor_rows_by_ids, list_sensor_data
 
 # Setup in-memory SQLite for testing
@@ -12,75 +16,103 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 
 @pytest.fixture(scope="function")
-def db():
+def db_session():
+    """Context manager for creating a temporary database session for testing"""
     models.Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
+    session = TestingSessionLocal()
     try:
-        yield db
+        yield session
     finally:
-        db.close()
+        session.close()
         models.Base.metadata.drop_all(bind=engine)
 
 
-def test_create_sensor_data(db: Session):
-    data = schemas.SensorDataIn(
+def test_create_sensor_data(db_session: Session):
+    """Row creation test"""
+    now = datetime.now()
+    data = models.SensorData(
+        id=uuid.uuid4(),
         sensor_id="sensor1",
-        metric=schemas.MetricEnum.temperature,
+        metric=models.MetricEnum.TEMPERATURE,
         value=25.5,
-        timestamp=datetime.utcnow(),
+        timestamp=now,
     )
-    obj = create_sensor_data(db, data)
-    assert getattr(obj, "sensor_id") == "sensor1"
-    assert getattr(obj, "metric") == schemas.MetricEnum.temperature
-    assert getattr(obj, "value") == 25.5
 
-def test_get_sensor_rows_by_ids(db: Session):
-    now = datetime.utcnow()
-    data1 = schemas.SensorDataIn(
+    obj = create_sensor_data(db_session, data)
+
+    assert getattr(obj, "id") == data.id
+    assert getattr(obj, "sensor_id") == "sensor1"
+    assert getattr(obj, "metric") == models.MetricEnum.TEMPERATURE
+    assert getattr(obj, "value") == 25.5
+    assert getattr(obj, "timestamp") == now
+
+
+def test_get_sensor_rows_by_ids(db_session: Session):
+    """Fetch rows by IDs test"""
+    now = datetime.now()
+    data1 = models.SensorData(
+        id=uuid.uuid4(),
         sensor_id="sensor1",
-        metric=schemas.MetricEnum.temperature,
+        metric=models.MetricEnum.TEMPERATURE,
         value=20,
         timestamp=now,
     )
-    data2 = schemas.SensorDataIn(
-        sensor_id="sensor2", metric=schemas.MetricEnum.humidity, value=50, timestamp=now
+    data2 = models.SensorData(
+        id=uuid.uuid4(),
+        sensor_id="sensor2",
+        metric=models.MetricEnum.HUMIDITY,
+        value=50,
+        timestamp=now,
     )
-    obj1 = create_sensor_data(db, data1)
-    obj2 = create_sensor_data(db, data2)
-    # Convert UUID to string for the DAL function
-    results = get_sensor_rows_by_ids(db, [str(obj1.id)])
+    obj1 = create_sensor_data(db_session, data1)
+    id1 = str(obj1.id)
+    create_sensor_data(db_session, data2)
+
+    results = get_sensor_rows_by_ids(db_session, [id1])
+
     assert len(results) == 1
     assert getattr(results[0], "sensor_id") == "sensor1"
 
 
-def test_list_sensor_data(db: Session):
-    now = datetime.utcnow()
-    data1 = schemas.SensorDataIn(
+def test_list_sensor_data(db_session: Session):
+    """List and filter rows test"""
+    now = datetime.now()
+    data1 = models.SensorData(
+        id=uuid.uuid4(),
         sensor_id="sensor1",
-        metric=schemas.MetricEnum.temperature,
+        metric=models.MetricEnum.TEMPERATURE,
         value=20,
+        timestamp=now - timedelta(days=2),
+    )
+    data2 = models.SensorData(
+        id=uuid.uuid4(),
+        sensor_id="sensor1",
+        metric=models.MetricEnum.HUMIDITY,
+        value=50,
         timestamp=now,
     )
-    data2 = schemas.SensorDataIn(
-        sensor_id="sensor1", metric=schemas.MetricEnum.humidity, value=50, timestamp=now
-    )
-    data3 = schemas.SensorDataIn(
+    data3 = models.SensorData(
+        id=uuid.uuid4(),
         sensor_id="sensor2",
-        metric=schemas.MetricEnum.temperature,
+        metric=models.MetricEnum.TEMPERATURE,
         value=22,
         timestamp=now,
     )
-    create_sensor_data(db, data1)
-    create_sensor_data(db, data2)
-    create_sensor_data(db, data3)
+    create_sensor_data(db_session, data1)
+    create_sensor_data(db_session, data2)
+    create_sensor_data(db_session, data3)
+
     # Test filter by sensor_id
-    results = list_sensor_data(db, sensor_ids=["sensor1"])
+    results = list_sensor_data(db_session, sensor_ids=[str(data1.id)])
     assert all(getattr(r, "sensor_id") == "sensor1" for r in results)
+
     # Test filter by metric
-    results = list_sensor_data(db, metrics=[schemas.MetricEnum.temperature])
-    assert all(getattr(r, "metric") == schemas.MetricEnum.temperature for r in results)
+    results = list_sensor_data(db_session, metrics=[models.MetricEnum.TEMPERATURE])
+    assert len(results) == 2
+    assert all(getattr(r, "metric") == models.MetricEnum.TEMPERATURE for r in results)
+
     # Test filter by date range
     results = list_sensor_data(
-        db, date_from=now - timedelta(days=1), date_to=now + timedelta(days=1)
+        db_session, date_from=now - timedelta(days=1), date_to=now + timedelta(days=1)
     )
-    assert len(results) == 3
+    assert len(results) == 2

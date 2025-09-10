@@ -2,12 +2,13 @@
 Provides functions to create and query sensor data records in the database.
 """
 
+import uuid
 from sqlalchemy.orm import Session
-from app import models, schemas
+from app import models
 
 
 def create_sensor_data(
-    session: Session, data: schemas.SensorDataIn
+    session: Session, data: models.SensorData
 ) -> models.SensorData:
     """
     Creates a new SensorData record in the database.
@@ -15,20 +16,14 @@ def create_sensor_data(
         session (Session): The SQLAlchemy session used for database operations.
         data (schemas.SensorDataIn): The input data for the new sensor data record.
     Returns:
-        models.SensorData: The newly created SensorData object, refreshed from the database.
+        models.SensorData: The newly created SensorData object. (MPV only, won't need in production)
     """
-    obj = models.SensorData(
-        sensor_id=data.sensor_id,
-        metric=data.metric,
-        value=data.value,
-    )
-    if data.timestamp:
-        setattr(obj, "timestamp", data.timestamp)
-    session.add(obj)
-    session.commit()
-    session.refresh(obj)
-    return obj
 
+    session.add(data)
+    session.commit()
+    # Only for MVP. Should not return the object in production. See Command and query responsibility segregation (CQRS).
+    session.refresh(data)
+    return data
 
 def get_sensor_rows_by_ids(
     session: Session, row_ids: list[str]
@@ -41,12 +36,12 @@ def get_sensor_rows_by_ids(
     Returns:
         list[models.SensorData]: List of SensorData objects matching the provided IDs.
     """
+    ids = [uuid.UUID(rid) for rid in row_ids]
     return (
-        session.query(models.SensorData).filter(models.SensorData.id.in_(row_ids)).all()
+        session.query(models.SensorData).filter(models.SensorData.id.in_(ids)).all()
     )
 
 
-# api/v1/sensors/list
 def list_sensor_data(
     session: Session, sensor_ids=None, metrics=None, date_from=None, date_to=None
 ) -> list[models.SensorData]:
@@ -73,5 +68,5 @@ def list_sensor_data(
     elif date_to:
         q = q.filter(models.SensorData.timestamp <= date_to)
 
-    q.limit(1000) # Limit to 1000 results to protect server resources.
+    q.limit(1000) # Hard limit to 1000 results to protect server resources.
     return q.all()

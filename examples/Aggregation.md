@@ -39,7 +39,7 @@ Failed:
 
 ```json
 {
-  "answer": "The average temperature for sensor_1 in the last week is 23.93 and the average humidity is 23.93.",
+  "answer": "The average temperature for sensor_1 in the last week is 23.93 and the average humidity is 43.93.",
   "followup_question": "Would you like to see the data for a different sensor or time period?",
   "id_list": null,
   "aggregation": null
