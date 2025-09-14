@@ -39,14 +39,10 @@ class SensorData(Base):
         index=True,
     )  # Unique row ID
     timestamp = Column(
-        DateTime, 
-        primary_key=False, 
-        index=True, 
-        default=datetime.now
+        DateTime, primary_key=False, index=True, default=datetime.now
     )  # When the measurement was taken.
     sensor_id = Column(
-        String, 
-        nullable=False
+        String, nullable=False
     )  # Sensor unique ID, sensor name or serial number.
     metric = Column(
         SAEnum(MetricEnum, values_callable=lambda obj: [e.value for e in obj]),

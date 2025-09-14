@@ -225,7 +225,7 @@ def test_ask_sensor_data():
 
     def mock_invoke(args):
         return {
-            "output": '{"answer":"The average temperature is 23.93 degrees.","followup_question":"What is the maximum temperature recorded?","id_list":null,"aggregation":"23.93"}'
+            "output": '{"answer":"The average temperature is 23.93 degrees.","followup_question":"What is the maximum temperature recorded?","id_list":null,"scalar":"23.93"}'
         }
 
     # Create a mock object with an invoke method
