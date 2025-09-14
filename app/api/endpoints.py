@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app import schemas, models
 from app.dal import SensorDataDAL, get_sensor_data_dal
-from app.llm_sql import get_prompt, parse_response, get_llm_agent
+from app.llm_sql import get_prompt, get_manual_prompt, parse_response, get_llm_agent
 
 router = APIRouter()
 
@@ -160,9 +160,9 @@ def ask_sensor_data(
             # Convert DB result to Pydantic models using from_models method.
             response.sensors = schemas.SensorDataOut.from_models(rows)
         elif (
-            parsed.aggregation
+            parsed.scalar
         ):  # LLM returned an aggregation result, so user intention more likely an aggregation query.
-            response.aggregation = parsed.aggregation
+            response.aggregation = parsed.scalar
         else:
             raise HTTPException(
                 status_code=404,

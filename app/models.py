@@ -4,7 +4,7 @@ Database models for sensor data.
 
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, Enum as SAEnum, DateTime, String, Float
+from sqlalchemy import Column, Enum as SAEnum, DateTime, String, Float, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
@@ -39,12 +39,24 @@ class SensorData(Base):
         index=True,
     )  # Unique row ID
     timestamp = Column(
-        DateTime, primary_key=True, index=True, default=datetime.now
+        DateTime, 
+        primary_key=False, 
+        index=True, 
+        default=datetime.now
     )  # When the measurement was taken.
     sensor_id = Column(
-        String, index=True
+        String, 
+        nullable=False
     )  # Sensor unique ID, sensor name or serial number.
-    metric = Column(SAEnum(MetricEnum, values_callable=lambda obj: [e.value for e in obj]), index=True)  # Type of metric being recorded.
+    metric = Column(
+        SAEnum(MetricEnum, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+    )  # Type of metric being recorded.
     value = Column(
         Float
     )  # The recorded value. The interpretation depends on the metric type.
+    __table_args__ = (
+        UniqueConstraint(
+            "metric", "sensor_id", "timestamp", name="_metroc_sensor_timestamp_uc"
+        ),
+    )
