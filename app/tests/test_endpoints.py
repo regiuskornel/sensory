@@ -179,7 +179,6 @@ def test_batch_get_sensor_data_integration():
         def mock_get_sensor_data_dal():
             return SensorDataDAL(session)
 
-        from app.main import app  # Re-import the FastAPI app
         app.dependency_overrides[get_sensor_data_dal] = mock_get_sensor_data_dal
 
         # Test the endpoint
@@ -217,7 +216,6 @@ def test_batch_get_sensor_data_integration():
             session.close()
         except:
             pass  # Ignore any cleanup errors
-        from app.main import app  # Re-import the FastAPI app
 
         app.dependency_overrides.clear()
 
@@ -227,7 +225,7 @@ def test_ask_sensor_data():
 
     def mock_invoke(args):
         return {
-            "output": '{"answer":"The average temperature is 23.93 degrees.","followup_question":"What is the maximum temperature recorded?","id_list":null,"aggregation":"23.93"}'
+            "output": '{"answer":"The average temperature is 23.93 degrees.","followup_question":"What is the maximum temperature recorded?","id_list":null,"scalar":"23.93"}'
         }
 
     # Create a mock object with an invoke method

@@ -25,5 +25,5 @@ async def lifespan(fapp: FastAPI):
     print("Shutting down app ...")
 
 load_dotenv(override=True)
-app = FastAPI(lifespan=lifespan, title="Sensory API", version="0.0.9")
+app = FastAPI(lifespan=lifespan, title="Sensory API", version="0.0.9", debug=True)
 app.include_router(endpoints.router, prefix="/api/v1")
