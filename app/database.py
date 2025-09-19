@@ -44,7 +44,8 @@ async def init_postgres() -> None:
     init_sql = """
     CREATE EXTENSION IF NOT EXISTS timescaledb;
     CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
- 
+    CREATE EXTENSION IF NOT EXISTS vector;
+
     SELECT create_hypertable('sensor_data', 'timestamp', if_not_exists => TRUE);
 
     -- Clean up any existing data for a fresh start
@@ -62,6 +63,41 @@ async def init_postgres() -> None:
             AND column_default IS NOT NULL
         ) THEN
             ALTER TABLE sensor_data ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+        END IF;
+    END $$;
+
+    -- User query cache table
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'query_cache' 
+        ) THEN
+            CREATE TABLE query_cache (
+                -- A unique identifier for each cached entry
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+                -- The original user's natural language question
+                user_question TEXT NOT NULL,
+
+                -- The vector embedding of the user's question.
+                -- The dimension (e.g., 1536) should match the output of your
+                -- chosen embedding model (e.g., OpenAI's text-embedding-ada-002).
+                user_question_embedding VECTOR(1536) NOT NULL,
+
+                -- The LLM-generated SQL query to be cached
+                cached_sql_query TEXT NOT NULL,
+
+                -- Timestamp for when the entry was created. Useful for cache
+                -- invalidation strategies based on age.
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+
+            -- Index for efficient vector similarity search.
+            -- The 'l2_distance' operator is used for Euclidean distance.
+            -- Other operators like 'cosine_distance' are also available.
+            -- You can choose the index type based on your needs (e.g., HNSW, IVFFlat).
+            CREATE INDEX ON query_cache USING HNSW (user_question_embedding vector_l2_ops);
         END IF;
     END $$;
 
@@ -187,6 +223,128 @@ async def init_postgres() -> None:
     ('2025-09-08T08:57:00+00:00', 'sensor_1', 'humidity', 40.63),
     ('2025-09-08T08:58:00+00:00', 'sensor_1', 'humidity', 40.32);
     
+    INSERT INTO sensor_data (timestamp, sensor_id, metric, value) VALUES
+    ('2025-09-19T08:00:00+00:00', 'sensor_5', 'temperature', 120.0),
+    ('2025-09-19T08:01:00+00:00', 'sensor_5', 'temperature', 120.32),
+    ('2025-09-19T08:02:00+00:00', 'sensor_5', 'temperature', 120.63),
+    ('2025-09-19T08:03:00+00:00', 'sensor_5', 'temperature', 120.95),
+    ('2025-09-19T08:04:00+00:00', 'sensor_5', 'temperature', 121.27),
+    ('2025-09-19T08:05:00+00:00', 'sensor_5', 'temperature', 121.58),
+    ('2025-09-19T08:06:00+00:00', 'sensor_5', 'temperature', 121.89),
+    ('2025-09-19T08:07:00+00:00', 'sensor_5', 'temperature', 122.19),
+    ('2025-09-19T08:08:00+00:00', 'sensor_5', 'temperature', 122.49),
+    ('2025-09-19T08:09:00+00:00', 'sensor_5', 'temperature', 122.79),
+    ('2025-09-19T08:10:00+00:00', 'sensor_5', 'temperature', 123.07),
+    ('2025-09-19T08:11:00+00:00', 'sensor_5', 'temperature', 123.35),
+    ('2025-09-19T08:12:00+00:00', 'sensor_5', 'temperature', 123.63),
+    ('2025-09-19T08:13:00+00:00', 'sensor_5', 'temperature', 123.89),
+    ('2025-09-19T08:14:00+00:00', 'sensor_5', 'temperature', 124.15),
+    ('2025-09-19T08:15:00+00:00', 'sensor_5', 'temperature', 124.39),
+    ('2025-09-19T08:16:00+00:00', 'sensor_5', 'temperature', 124.62),
+    ('2025-09-19T08:17:00+00:00', 'sensor_5', 'temperature', 124.85),
+    ('2025-09-19T08:18:00+00:00', 'sensor_5', 'temperature', 125.06),
+    ('2025-09-19T08:19:00+00:00', 'sensor_5', 'temperature', 125.25),
+    ('2025-09-19T08:20:00+00:00', 'sensor_5', 'temperature', 125.43),
+    ('2025-09-19T08:21:00+00:00', 'sensor_5', 'temperature', 125.59),
+    ('2025-09-19T08:22:00+00:00', 'sensor_5', 'temperature', 125.74),
+    ('2025-09-19T08:23:00+00:00', 'sensor_5', 'temperature', 125.87),
+    ('2025-09-19T08:24:00+00:00', 'sensor_5', 'temperature', 125.99),
+    ('2025-09-19T08:25:00+00:00', 'sensor_5', 'temperature', 126.08),
+    ('2025-09-19T08:26:00+00:00', 'sensor_5', 'temperature', 126.16),
+    ('2025-09-19T08:27:00+00:00', 'sensor_5', 'temperature', 126.22),
+    ('2025-09-19T08:28:00+00:00', 'sensor_5', 'temperature', 126.26),
+    ('2025-09-19T08:29:00+00:00', 'sensor_5', 'temperature', 126.28),
+    ('2025-09-19T08:30:00+00:00', 'sensor_5', 'temperature', 126.28),
+    ('2025-09-19T08:31:00+00:00', 'sensor_5', 'temperature', 126.26),
+    ('2025-09-19T08:32:00+00:00', 'sensor_5', 'temperature', 126.22),
+    ('2025-09-19T08:33:00+00:00', 'sensor_5', 'temperature', 126.16),
+    ('2025-09-19T08:34:00+00:00', 'sensor_5', 'temperature', 126.08),
+    ('2025-09-19T08:35:00+00:00', 'sensor_5', 'temperature', 125.99),
+    ('2025-09-19T08:36:00+00:00', 'sensor_5', 'temperature', 125.87),
+    ('2025-09-19T08:37:00+00:00', 'sensor_5', 'temperature', 125.74),
+    ('2025-09-19T08:38:00+00:00', 'sensor_5', 'temperature', 125.59),
+    ('2025-09-19T08:39:00+00:00', 'sensor_5', 'temperature', 125.43),
+    ('2025-09-19T08:40:00+00:00', 'sensor_5', 'temperature', 125.25),
+    ('2025-09-19T08:41:00+00:00', 'sensor_5', 'temperature', 125.06),
+    ('2025-09-19T08:42:00+00:00', 'sensor_5', 'temperature', 124.85),
+    ('2025-09-19T08:43:00+00:00', 'sensor_5', 'temperature', 124.62),
+    ('2025-09-19T08:44:00+00:00', 'sensor_5', 'temperature', 124.39),
+    ('2025-09-19T08:45:00+00:00', 'sensor_5', 'temperature', 124.15),
+    ('2025-09-19T08:46:00+00:00', 'sensor_5', 'temperature', 123.89),
+    ('2025-09-19T08:47:00+00:00', 'sensor_5', 'temperature', 123.63),
+    ('2025-09-19T08:48:00+00:00', 'sensor_5', 'temperature', 123.35),
+    ('2025-09-19T08:49:00+00:00', 'sensor_5', 'temperature', 123.07),
+    ('2025-09-19T08:50:00+00:00', 'sensor_5', 'temperature', 122.79),
+    ('2025-09-19T08:51:00+00:00', 'sensor_5', 'temperature', 122.49),
+    ('2025-09-19T08:52:00+00:00', 'sensor_5', 'temperature', 122.19),
+    ('2025-09-19T08:53:00+00:00', 'sensor_5', 'temperature', 121.89),
+    ('2025-09-19T08:54:00+00:00', 'sensor_5', 'temperature', 121.58),
+    ('2025-09-19T08:55:00+00:00', 'sensor_5', 'temperature', 121.27),
+    ('2025-09-19T08:56:00+00:00', 'sensor_5', 'temperature', 120.95),
+    ('2025-09-19T08:57:00+00:00', 'sensor_5', 'temperature', 120.63),
+    ('2025-09-19T08:58:00+00:00', 'sensor_5', 'temperature', 120.32);
+
+    INSERT INTO sensor_data (timestamp, sensor_id, metric, value) VALUES
+    ('2025-09-19T08:00:00+00:00', 'sensor_6', 'temperature', 220.0),
+    ('2025-09-19T08:01:00+00:00', 'sensor_6', 'temperature', 220.32),
+    ('2025-09-19T08:02:00+00:00', 'sensor_6', 'temperature', 220.63),
+    ('2025-09-19T08:03:00+00:00', 'sensor_6', 'temperature', 220.95),
+    ('2025-09-19T08:04:00+00:00', 'sensor_6', 'temperature', 221.27),
+    ('2025-09-19T08:05:00+00:00', 'sensor_6', 'temperature', 221.58),
+    ('2025-09-19T08:06:00+00:00', 'sensor_6', 'temperature', 221.89),
+    ('2025-09-19T08:07:00+00:00', 'sensor_6', 'temperature', 222.19),
+    ('2025-09-19T08:08:00+00:00', 'sensor_6', 'temperature', 222.49),
+    ('2025-09-19T08:09:00+00:00', 'sensor_6', 'temperature', 222.79),
+    ('2025-09-19T08:10:00+00:00', 'sensor_6', 'temperature', 223.07),
+    ('2025-09-19T08:11:00+00:00', 'sensor_6', 'temperature', 223.35),
+    ('2025-09-19T08:12:00+00:00', 'sensor_6', 'temperature', 223.63),
+    ('2025-09-19T08:13:00+00:00', 'sensor_6', 'temperature', 223.89),
+    ('2025-09-19T08:14:00+00:00', 'sensor_6', 'temperature', 224.15),
+    ('2025-09-19T08:15:00+00:00', 'sensor_6', 'temperature', 224.39),
+    ('2025-09-19T08:16:00+00:00', 'sensor_6', 'temperature', 224.62),
+    ('2025-09-19T08:17:00+00:00', 'sensor_6', 'temperature', 224.85),
+    ('2025-09-19T08:18:00+00:00', 'sensor_6', 'temperature', 225.06),
+    ('2025-09-19T08:19:00+00:00', 'sensor_6', 'temperature', 225.25),
+    ('2025-09-19T08:20:00+00:00', 'sensor_6', 'temperature', 225.43),
+    ('2025-09-19T08:21:00+00:00', 'sensor_6', 'temperature', 225.59),
+    ('2025-09-19T08:22:00+00:00', 'sensor_6', 'temperature', 225.74),
+    ('2025-09-19T08:23:00+00:00', 'sensor_6', 'temperature', 225.87),
+    ('2025-09-19T08:24:00+00:00', 'sensor_6', 'temperature', 225.99),
+    ('2025-09-19T08:25:00+00:00', 'sensor_6', 'temperature', 226.08),
+    ('2025-09-19T08:26:00+00:00', 'sensor_6', 'temperature', 226.16),
+    ('2025-09-19T08:27:00+00:00', 'sensor_6', 'temperature', 226.22),
+    ('2025-09-19T08:28:00+00:00', 'sensor_6', 'temperature', 226.26),
+    ('2025-09-19T08:29:00+00:00', 'sensor_6', 'temperature', 226.28),
+    ('2025-09-19T08:30:00+00:00', 'sensor_6', 'temperature', 226.28),
+    ('2025-09-19T08:31:00+00:00', 'sensor_6', 'temperature', 226.26),
+    ('2025-09-19T08:32:00+00:00', 'sensor_6', 'temperature', 226.22),
+    ('2025-09-19T08:33:00+00:00', 'sensor_6', 'temperature', 226.16),
+    ('2025-09-19T08:34:00+00:00', 'sensor_6', 'temperature', 226.08),
+    ('2025-09-19T08:35:00+00:00', 'sensor_6', 'temperature', 225.99),
+    ('2025-09-19T08:36:00+00:00', 'sensor_6', 'temperature', 225.87),
+    ('2025-09-19T08:37:00+00:00', 'sensor_6', 'temperature', 225.74),
+    ('2025-09-19T08:38:00+00:00', 'sensor_6', 'temperature', 225.59),
+    ('2025-09-19T08:39:00+00:00', 'sensor_6', 'temperature', 225.43),
+    ('2025-09-19T08:40:00+00:00', 'sensor_6', 'temperature', 225.25),
+    ('2025-09-19T08:41:00+00:00', 'sensor_6', 'temperature', 225.06),
+    ('2025-09-19T08:42:00+00:00', 'sensor_6', 'temperature', 224.85),
+    ('2025-09-19T08:43:00+00:00', 'sensor_6', 'temperature', 224.62),
+    ('2025-09-19T08:44:00+00:00', 'sensor_6', 'temperature', 224.39),
+    ('2025-09-19T08:45:00+00:00', 'sensor_6', 'temperature', 224.15),
+    ('2025-09-19T08:46:00+00:00', 'sensor_6', 'temperature', 223.89),
+    ('2025-09-19T08:47:00+00:00', 'sensor_6', 'temperature', 223.63),
+    ('2025-09-19T08:48:00+00:00', 'sensor_6', 'temperature', 223.35),
+    ('2025-09-19T08:49:00+00:00', 'sensor_6', 'temperature', 223.07),
+    ('2025-09-19T08:50:00+00:00', 'sensor_6', 'temperature', 222.79),
+    ('2025-09-19T08:51:00+00:00', 'sensor_6', 'temperature', 222.49),
+    ('2025-09-19T08:52:00+00:00', 'sensor_6', 'temperature', 222.19),
+    ('2025-09-19T08:53:00+00:00', 'sensor_6', 'temperature', 221.89),
+    ('2025-09-19T08:54:00+00:00', 'sensor_6', 'temperature', 221.58),
+    ('2025-09-19T08:55:00+00:00', 'sensor_6', 'temperature', 221.27),
+    ('2025-09-19T08:56:00+00:00', 'sensor_6', 'temperature', 220.95),
+    ('2025-09-19T08:57:00+00:00', 'sensor_6', 'temperature', 220.63),
+    ('2025-09-19T08:58:00+00:00', 'sensor_6', 'temperature', 220.32);
+
     -- Random other sensors, metrics, and values
     INSERT INTO sensor_data (timestamp, sensor_id, metric, value) VALUES
     ('2025-09-08T08:05:00+00:00', 'sensor_2', 'humidity', 55.2),
@@ -207,5 +365,4 @@ async def init_postgres() -> None:
         print("PostgreSQL with timescales has been initialized.")
     except Exception as e:
         print(f"Error occured when running query : {e}")
-        print(init_sql)
         raise
